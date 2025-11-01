@@ -1,0 +1,15 @@
+@page "/Events/Details/{id:guid}"
+@model BookingManagmint.Pages.Events.DetailsModel
+@{
+    ViewData["Title"] = "Event Details";
+}
+
+<div id="root-event-details"></div>
+
+@section Scripts {
+    <script>
+        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
+        window.__REACT_MOUNTS__.push({ id: 'root-event-details', component: 'EventDetails' });
+    </script>
+}
+

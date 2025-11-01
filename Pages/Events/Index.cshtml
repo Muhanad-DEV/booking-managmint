@@ -1,0 +1,17 @@
+@page
+@model BookingManagmint.Pages.Events.IndexModel
+@{
+    ViewData["Title"] = "Events";
+}
+
+<h1 class="mb-4">Events</h1>
+
+<div id="root-events"></div>
+
+@section Scripts {
+    <script>
+        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
+        window.__REACT_MOUNTS__.push({ id: 'root-events', component: 'EventsList' });
+    </script>
+}
+

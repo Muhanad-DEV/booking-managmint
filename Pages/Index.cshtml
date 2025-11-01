@@ -1,0 +1,21 @@
+@page
+@model BookingManagmint.Pages.IndexModel
+@{
+    ViewData["Title"] = "Events";
+}
+
+<div class="hero mb-4">
+    <h1 class="m-0">Browse Events</h1>
+    <div class="text-muted">Find workshops, talks, and on-campus activities</div>
+</div>
+
+<div id="root-home"></div>
+<noscript>Please enable JavaScript to use interactive features.</noscript>
+
+@section Scripts {
+    <script>
+        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
+        window.__REACT_MOUNTS__.push({ id: 'root-home', component: 'EventsHome' });
+    </script>
+}
+

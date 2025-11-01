@@ -1,0 +1,15 @@
+@page
+@model BookingManagmint.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = "My Dashboard";
+}
+
+<div id="root-dashboard"></div>
+
+@section Scripts {
+    <script>
+        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
+        window.__REACT_MOUNTS__.push({ id: 'root-dashboard', component: 'DashboardView' });
+    </script>
+}
+

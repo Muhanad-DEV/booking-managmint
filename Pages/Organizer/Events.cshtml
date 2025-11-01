@@ -1,0 +1,15 @@
+@page
+@model BookingManagmint.Pages.Organizer.EventsModel
+@{
+    ViewData["Title"] = "Organizer - Events";
+}
+
+<div id="root-organizer"></div>
+
+@section Scripts {
+    <script>
+        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
+        window.__REACT_MOUNTS__.push({ id: 'root-organizer', component: 'OrganizerForm' });
+    </script>
+}
+
