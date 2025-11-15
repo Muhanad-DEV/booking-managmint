@@ -12,7 +12,7 @@ Event Booking System for COMP4701 - Web Application Development
 
 - **Backend**: ASP.NET Core 9.0 (Razor Pages)
 - **Frontend**: React 18 + Vite
-- **Database**: SQLite + Entity Framework Core
+- **Storage**: In-Memory (for prototyping; SQL structure saved in `docs/SAVED_SQL_STRUCTURE.md`)
 - **Styling**: Bootstrap 5.3.3
 
 ## Setup Instructions
@@ -57,16 +57,11 @@ Event Booking System for COMP4701 - Web Application Development
 
    This outputs to `wwwroot/dist` for the Razor Pages to load.
 
-### Database
+### Storage
 
-The SQLite database (`app.db`) is created automatically on first run via `EnsureCreated()`.
+The application currently uses **in-memory storage** for prototyping. All data is stored in memory and will be lost when the application restarts.
 
-For production, use migrations:
-```bash
-dotnet tool install --global dotnet-ef
-dotnet ef migrations add InitialCreate
-dotnet ef database update
-```
+The SQL database structure has been saved for future reference in `docs/SAVED_SQL_STRUCTURE.md`. To re-implement database support, refer to that file for the complete schema and Entity Framework configuration.
 
 ## Project Structure
 
@@ -77,7 +72,7 @@ booking-managmint/
 │       └── modules/
 │           ├── components/  # React components
 │           └── pages/      # Page components
-├── Data/               # Database context
+├── Services/           # Business logic (includes InMemoryStore)
 ├── Models/             # Domain models (User, Event, Ticket)
 ├── Pages/              # Razor Pages
 │   ├── Events/        # Events listing and details

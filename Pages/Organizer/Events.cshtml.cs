@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using BookingManagmint.Services;
-using BookingManagmint.Data;
 using System.ComponentModel.DataAnnotations;
 
 namespace BookingManagmint.Pages.Organizer
@@ -10,9 +9,6 @@ namespace BookingManagmint.Pages.Organizer
     public class EventsModel : PageModel
     {
         private readonly BookingService _booking = new BookingService();
-        private readonly AppDbContext _db;
-
-        public EventsModel(AppDbContext db) { _db = db; }
 
         public class Input
         {
@@ -44,10 +40,6 @@ namespace BookingManagmint.Pages.Organizer
             }
 
             var ev = _booking.CreateEvent(ModelInput.Title, ModelInput.Description ?? string.Empty, ModelInput.DateTime, ModelInput.Venue, ModelInput.Capacity, ModelInput.Price, ModelInput.Category);
-
-            // Persist to DB
-            _db.Events.Add(ev);
-            _db.SaveChanges();
 
             return new JsonResult(new { id = ev.EventId });
         }
