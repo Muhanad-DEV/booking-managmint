@@ -1,34 +1,127 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using BookingManagmint.Services;
+using BookingManagmint.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Http;
 
 namespace BookingManagmint.Pages.Dashboard
 {
     [IgnoreAntiforgeryToken]
     public class IndexModel : PageModel
     {
-        private readonly BookingService _booking = new BookingService();
+        private readonly DbConnectionFactory _factory;
+        private readonly AppDbContext _db;
+        public IndexModel(DbConnectionFactory factory, AppDbContext db)
+        {
+            _factory = factory;
+            _db = db;
+        }
 
         public IActionResult OnGetTickets()
         {
-            // Demo: first attendee
-            var user = InMemoryStore.Users.FirstOrDefault(u => u.Role == Models.UserRole.Attendee);
-            if (user == null) return new JsonResult(Array.Empty<object>());
-            var items = _booking.ListUserTickets(user.UserId).Select(t => new {
-                id = t.TicketId,
-                eventId = t.EventId,
-                status = t.Status.ToString(),
-                purchasedAt = t.PurchasedAt
-            });
-            return new JsonResult(items);
+            var userIdText = HttpContext.Session.GetString("UserId");
+            if (!Guid.TryParse(userIdText, out var userId))
+            {
+                Response.StatusCode = 401;
+                return new JsonResult(Array.Empty<object>());
+            }
+
+            var rows = new List<object>();
+            using var conn = _factory.CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT TicketId, EventId, Status, PurchasedAt
+                                FROM vw_UserTickets
+                                WHERE UserId = @uid
+                                ORDER BY PurchasedAt DESC";
+            cmd.Parameters.Add(new SqlParameter("@uid", userId));
+            conn.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                rows.Add(new
+                {
+                    id = reader.GetGuid(0),
+                    eventId = reader.GetGuid(1),
+                    status = StatusText(reader.GetInt32(2)),
+                    purchasedAt = reader.GetDateTime(3)
+                });
+            }
+            return new JsonResult(rows);
         }
 
         public IActionResult OnPostCancel(Guid ticketId)
         {
-            var ok = _booking.CancelTicket(ticketId);
-            if (!ok) return BadRequest();
-            return new JsonResult(new { ok = true });
+            var userIdText = HttpContext.Session.GetString("UserId");
+            if (!Guid.TryParse(userIdText, out var userId))
+            {
+                Response.StatusCode = 401;
+                return new JsonResult(new { ok = false, error = "Not logged in" });
+            }
+
+            try
+            {
+                using var conn = _factory.CreateConnection();
+                conn.Open();
+                using var tx = conn.BeginTransaction();
+
+                Guid eventId;
+                using (var select = conn.CreateCommand())
+                {
+                    select.Transaction = tx;
+                    select.CommandText = @"SELECT EventId FROM Tickets WHERE TicketId = @id AND UserId = @uid AND Status <> 2";
+                    select.Parameters.Add(new SqlParameter("@id", ticketId));
+                    select.Parameters.Add(new SqlParameter("@uid", userId));
+                    var result = select.ExecuteScalar();
+                    if (result == null)
+                    {
+                        tx.Rollback();
+                        return BadRequest(new { ok = false, error = "Ticket not found" });
+                    }
+                    eventId = (Guid)result;
+                }
+
+                using (var updateTicket = conn.CreateCommand())
+                {
+                    updateTicket.Transaction = tx;
+                    updateTicket.CommandText = @"UPDATE Tickets SET Status = 2 WHERE TicketId = @id";
+                    updateTicket.Parameters.Add(new SqlParameter("@id", ticketId));
+                    updateTicket.ExecuteNonQuery();
+                }
+
+                using (var release = conn.CreateCommand())
+                {
+                    release.Transaction = tx;
+                    release.CommandText = @"UPDATE Events SET RemainingSeats = RemainingSeats + 1 WHERE EventId = @eventId";
+                    release.Parameters.Add(new SqlParameter("@eventId", eventId));
+                    release.ExecuteNonQuery();
+                }
+
+                tx.Commit();
+                return new JsonResult(new { ok = true });
+            }
+            catch (Exception ex)
+            {
+                Response.StatusCode = 500;
+                return new JsonResult(new { ok = false, error = "Unexpected error", detail = ex.Message });
+            }
         }
+
+        public IActionResult OnGetStats()
+        {
+            var totalTickets = _db.Tickets.Count();
+            var paid = _db.Tickets.Count(t => t.Status == Models.TicketStatus.Paid);
+            var upcoming = _db.Events.Count(e => e.DateTime >= DateTime.UtcNow);
+            return new JsonResult(new { totalTickets, paidTickets = paid, upcomingEvents = upcoming });
+        }
+
+        private static string StatusText(int status) => status switch
+        {
+            0 => "Reserved",
+            1 => "Paid",
+            2 => "Cancelled",
+            3 => "CheckedIn",
+            _ => "Unknown"
+        };
     }
 }
 

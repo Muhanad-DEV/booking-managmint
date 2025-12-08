@@ -1,0 +1,31 @@
+digraph ERD {
+  rankdir=TB;
+  node [shape=record, fontname="Arial", fontsize=10];
+  edge [fontname="Arial", fontsize=9];
+
+  // User Entity
+  User [label="{User|+ userId: GUID (PK)\l+ Email: string (UQ, NOT NULL)\l+ PasswordHash: string (NOT NULL)\l+ FullName: string (MaxLength: 200)\l+ Role: enum (Attendee|Organizer|Admin)\l}", 
+    style="filled", fillcolor="#90caf9", color="#1976d2"];
+
+  // Event Entity - ALL ATTRIBUTES
+  Event [label="{Event|+ eventId: GUID (PK)\l+ Title: string (NOT NULL, MaxLength: 120)\l+ Description: text\l+ DateTime: datetime (NOT NULL)\l+ Venue: string (NOT NULL, MaxLength: 200)\l+ Capacity: int (Default: 0, >= 0)\l+ RemainingSeats: int (Default: 0)\l+ Price: decimal (Default: 0, >= 0)\l+ Category: string\l}", 
+    style="filled", fillcolor="#a5d6a7", color="#2e7d32"];
+
+  // Ticket Entity
+  Ticket [label="{Ticket|+ ticketId: GUID (PK)\l+ userId: GUID (FK → User)\l+ eventId: GUID (FK → Event)\l+ Status: enum (Reserved|Paid|Cancelled|CheckedIn)\l+ QRCode: string (UQ, NOT NULL)\l+ PurchasedAt: datetime\l+ SeatNumber: string? (NULL)\l}", 
+    style="filled", fillcolor="#ffe082", color="#f9a825"];
+
+  // Relationships
+  User -> Ticket [label="1", dir=forward, arrowtail=crow, arrowhead=none, 
+    color="#42a5f5", penwidth=2];
+  User -> Ticket [label="*", dir=back, arrowtail=none, arrowhead=tee, 
+    color="#42a5f5", penwidth=2, style=dashed];
+  
+  Event -> Ticket [label="1", dir=forward, arrowtail=crow, arrowhead=none, 
+    color="#66bb6a", penwidth=2];
+  Event -> Ticket [label="*", dir=back, arrowtail=none, arrowhead=tee, 
+    color="#66bb6a", penwidth=2, style=dashed];
+
+  // Layout
+  {rank=same; User; Event; Ticket}
+}

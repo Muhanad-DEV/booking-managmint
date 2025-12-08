@@ -1,0 +1,18 @@
+digraph Architecture {
+  rankdir=LR;
+  node [shape=rectangle, style=filled, fontname="Helvetica"];
+  subgraph cluster_client {
+    label="Client Browser"; color="#90caf9"; style=filled; fillcolor="#e3f2fd";
+    ReactRazor [label="React Components\n+ Razor Pages UI", fillcolor="#bbdefb"];
+  }
+  APIServer [label="ASP.NET Core\n Razor Pages + Handlers", fillcolor="#c8e6c9"];
+  Business [label="Business Logic\n Validation & Rules", fillcolor="#a5d6a7"];
+  DB [label="SQLite DB\n (Users, Events, Tickets)", fillcolor="#ffe082"];
+  Email [label="Email/Notifications", fillcolor="#fff59d"];
+
+  ReactRazor -> APIServer [label="HTTP(S) requests\n form posts + fetch", color="#42a5f5"];
+  APIServer -> Business [label="invoke", color="#66bb6a"];
+  Business -> DB [label="CRUD + transactions", color="#8d6e63"];
+  Business -> Email [label="confirmations/reminders", color="#fbc02d"];
+  APIServer -> ReactRazor [label="HTML + JSON responses", color="#42a5f5"];
+}

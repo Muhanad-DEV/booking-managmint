@@ -12,7 +12,7 @@ Event Booking System for COMP4701 - Web Application Development
 
 - **Backend**: ASP.NET Core 9.0 (Razor Pages)
 - **Frontend**: React 18 + Vite
-- **Storage**: In-Memory (for prototyping; SQL structure saved in `docs/SAVED_SQL_STRUCTURE.md`)
+- **Storage**: SQL Server (ADO.NET for direct SQL, EF Core for LINQ/ORM)
 - **Styling**: Bootstrap 5.3.3
 
 ## Setup Instructions
@@ -38,6 +38,14 @@ Event Booking System for COMP4701 - Web Application Development
    - http://localhost:5000
    - https://localhost:5001
 
+3. Prepare SQL Server database:
+   ```bash
+   # ensure DefaultConnection in appsettings.json points to your SQL Server
+   sqlcmd -S "(localdb)\\MSSQLLocalDB" -i docs/sqlserver_init.sql
+   ```
+
+   The script creates tables, constraints, a view, and seeds sample data.
+
 ### Frontend Setup
 
 1. Navigate to ClientApp directory:
@@ -59,9 +67,12 @@ Event Booking System for COMP4701 - Web Application Development
 
 ### Storage
 
-The application currently uses **in-memory storage** for prototyping. All data is stored in memory and will be lost when the application restarts.
+The application now uses **SQL Server**.
 
-The SQL database structure has been saved for future reference in `docs/SAVED_SQL_STRUCTURE.md`. To re-implement database support, refer to that file for the complete schema and Entity Framework configuration.
+- Connection string: set `DefaultConnection` in `appsettings.json` (defaults to `(localdb)\\MSSQLLocalDB`).
+- Initialize schema and seed data: run the basic script `docs/sqlserver_init.sql` against your SQL Server instance.
+- Direct SQL pages (Question 2): Events list, Event details/booking, Dashboard tickets use ADO.NET with parameterized commands.
+- EF/LINQ pages (Question 3): Auth (login/register/logout), Organizer events, Dashboard stats, Home summary use EF Core and LINQ.
 
 ## Project Structure
 

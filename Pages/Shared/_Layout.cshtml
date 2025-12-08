@@ -1,4 +1,5 @@
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@using Microsoft.AspNetCore.Http
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,10 +18,32 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav ms-auto">
+                    <ul class="navbar-nav ms-auto align-items-center">
                         <li class="nav-item"><a class="nav-link" asp-page="/Index">Events</a></li>
                         <li class="nav-item"><a class="nav-link" asp-page="/Dashboard/Index">Dashboard</a></li>
                         <li class="nav-item"><a class="nav-link" asp-page="/Organizer/Events">Organizer</a></li>
+                        @{
+                            var userName = Context.Session.GetString("UserName");
+                            var userEmail = Context.Session.GetString("UserEmail");
+                        }
+                        @if (!string.IsNullOrEmpty(userName))
+                        {
+                            <li class="nav-item">
+                                <span class="navbar-text text-white me-2">@userName (@userEmail)</span>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Auth/Logout">Logout</a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Auth/Login">Login</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-page="/Auth/Register">Register</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>

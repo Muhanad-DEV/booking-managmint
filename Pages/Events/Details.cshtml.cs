@@ -1,49 +1,95 @@
 using System;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using BookingManagmint.Services;
+using BookingManagmint.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Http;
 
 namespace BookingManagmint.Pages.Events
 {
     [IgnoreAntiforgeryToken]
     public class DetailsModel : PageModel
     {
-        private readonly BookingService _booking;
-        public DetailsModel() { _booking = new BookingService(); }
+        private readonly DbConnectionFactory _factory;
+        public DetailsModel(DbConnectionFactory factory) => _factory = factory;
 
         public IActionResult OnGetDetails(Guid id)
         {
-            var ev = _booking.GetEvent(id);
-            if (ev == null) return NotFound();
-            return new JsonResult(new {
-                id = ev.EventId,
-                title = ev.Title,
-                description = ev.Description,
-                dateTime = ev.DateTime,
-                venue = ev.Venue,
-                remaining = ev.RemainingSeats,
-                capacity = ev.Capacity,
-                price = ev.Price,
-                category = ev.Category
-            });
+            using var conn = _factory.CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT EventId, Title, Description, DateTime, Venue, RemainingSeats, Capacity, Price, Category
+                                FROM Events
+                                WHERE EventId = @id";
+            cmd.Parameters.Add(new SqlParameter("@id", id));
+            conn.Open();
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read()) return NotFound();
+
+            var result = new
+            {
+                id = reader.GetGuid(0),
+                title = reader.GetString(1),
+                description = reader.GetString(2),
+                dateTime = reader.GetDateTime(3),
+                venue = reader.GetString(4),
+                remaining = reader.GetInt32(5),
+                capacity = reader.GetInt32(6),
+                price = reader.GetDecimal(7),
+                category = reader.GetString(8)
+            };
+            return new JsonResult(result);
         }
 
         public IActionResult OnPostBook(Guid id, int quantity = 1)
         {
-            // For prototype, pick the first attendee user
-            var user = InMemoryStore.Users.FirstOrDefault(u => u.Role == Models.UserRole.Attendee);
-            if (user == null) return BadRequest("No attendee user available");
+            var userIdText = HttpContext.Session.GetString("UserId");
+            if (!Guid.TryParse(userIdText, out var userId))
+            {
+                Response.StatusCode = 401;
+                return new JsonResult(new { error = "Not logged in" });
+            }
             if (quantity <= 0) return BadRequest("Quantity must be at least 1");
+
             try
             {
-                var ticket = _booking.BookTickets(user.UserId, id, quantity);
-                if (ticket == null) return BadRequest("Booking failed");
-                return new JsonResult(new { ticketId = ticket.TicketId, status = ticket.Status.ToString() });
+                using var conn = _factory.CreateConnection();
+                conn.Open();
+                using var tx = conn.BeginTransaction();
+
+                using var update = conn.CreateCommand();
+                update.Transaction = tx;
+                update.CommandText = @"UPDATE Events
+                                       SET RemainingSeats = RemainingSeats - @qty
+                                       WHERE EventId = @eventId AND RemainingSeats >= @qty";
+                update.Parameters.Add(new SqlParameter("@qty", quantity));
+                update.Parameters.Add(new SqlParameter("@eventId", id));
+
+                var rows = update.ExecuteNonQuery();
+                if (rows == 0)
+                {
+                    tx.Rollback();
+                    return BadRequest("Not enough seats available");
+                }
+
+                var ticketId = Guid.NewGuid();
+                using var insert = conn.CreateCommand();
+                insert.Transaction = tx;
+                insert.CommandText = @"INSERT INTO Tickets (TicketId, UserId, EventId, Status, QRCode, SeatNumber)
+                                       VALUES (@id, @userId, @eventId, @status, @qr, NULL)";
+                insert.Parameters.Add(new SqlParameter("@id", ticketId));
+                insert.Parameters.Add(new SqlParameter("@userId", userId));
+                insert.Parameters.Add(new SqlParameter("@eventId", id));
+                insert.Parameters.Add(new SqlParameter("@status", 1)); // Paid
+                insert.Parameters.Add(new SqlParameter("@qr", $"QR-{ticketId.ToString()[..8]}"));
+                insert.ExecuteNonQuery();
+
+                tx.Commit();
+                return new JsonResult(new { ticketId, status = "Paid" });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 Response.StatusCode = 500;
-                return new JsonResult(new { error = "Unexpected error while booking" });
+                return new JsonResult(new { error = "Unexpected error while booking", detail = ex.Message });
             }
         }
     }

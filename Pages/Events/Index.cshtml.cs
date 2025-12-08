@@ -1,28 +1,40 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using BookingManagmint.Services;
+using BookingManagmint.Data;
+using Microsoft.Data.SqlClient;
 
 namespace BookingManagmint.Pages.Events
 {
     public class IndexModel : PageModel
     {
-        private readonly BookingService _booking;
-        public IndexModel()
-        {
-            _booking = new BookingService();
-        }
+        private readonly DbConnectionFactory _factory;
+        public IndexModel(DbConnectionFactory factory) => _factory = factory;
 
         public IActionResult OnGetList(string? q)
         {
-            var items = _booking.ListEvents(q).Select(e => new {
-                id = e.EventId,
-                title = e.Title,
-                dateTime = e.DateTime,
-                venue = e.Venue,
-                remaining = e.RemainingSeats,
-                category = e.Category
-            });
-            return new JsonResult(items);
+            var rows = new List<object>();
+            using var conn = _factory.CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT TOP 100 EventId, Title, DateTime, Venue, RemainingSeats, Category
+                                FROM Events
+                                WHERE (@q IS NULL OR Title LIKE '%' + @q + '%')
+                                ORDER BY DateTime";
+            cmd.Parameters.Add(new SqlParameter("@q", (object?)q ?? DBNull.Value));
+            conn.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                rows.Add(new
+                {
+                    id = reader.GetGuid(0),
+                    title = reader.GetString(1),
+                    dateTime = reader.GetDateTime(2),
+                    venue = reader.GetString(3),
+                    remaining = reader.GetInt32(4),
+                    category = reader.GetString(5)
+                });
+            }
+            return new JsonResult(rows);
         }
     }
 }

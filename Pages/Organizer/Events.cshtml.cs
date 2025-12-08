@@ -1,14 +1,18 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using BookingManagmint.Services;
+using BookingManagmint.Data;
+using BookingManagmint.Models;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
 
 namespace BookingManagmint.Pages.Organizer
 {
     [IgnoreAntiforgeryToken]
     public class EventsModel : PageModel
     {
-        private readonly BookingService _booking = new BookingService();
+        private readonly AppDbContext _db;
+        public EventsModel(AppDbContext db) => _db = db;
 
         public class Input
         {
@@ -31,6 +35,24 @@ namespace BookingManagmint.Pages.Organizer
         [BindProperty]
         public Input ModelInput { get; set; } = new Input();
 
+        public async Task<IActionResult> OnGetListAsync()
+        {
+            var userName = HttpContext.Session.GetString("UserName") ?? "Organizer";
+            var events = await _db.Events
+                .OrderBy(e => e.DateTime)
+                .Select(e => new
+                {
+                    e.EventId,
+                    e.Title,
+                    e.DateTime,
+                    e.Venue,
+                    e.RemainingSeats,
+                    e.Category
+                })
+                .ToListAsync();
+            return new JsonResult(new { organizer = userName, events });
+        }
+
         public IActionResult OnPostCreate()
         {
             if (!ModelState.IsValid)
@@ -39,9 +61,29 @@ namespace BookingManagmint.Pages.Organizer
                 return new JsonResult(new { error = "Validation failed", details = ModelState });
             }
 
-            var ev = _booking.CreateEvent(ModelInput.Title, ModelInput.Description ?? string.Empty, ModelInput.DateTime, ModelInput.Venue, ModelInput.Capacity, ModelInput.Price, ModelInput.Category);
+            var ev = new Event(ModelInput.Title, ModelInput.Description ?? string.Empty, ModelInput.DateTime, ModelInput.Venue, ModelInput.Capacity, ModelInput.Price, ModelInput.Category);
+            _db.Events.Add(ev);
+            _db.SaveChanges();
 
             return new JsonResult(new { id = ev.EventId });
+        }
+
+        public IActionResult OnPostDelete(Guid id)
+        {
+            var ev = _db.Events.FirstOrDefault(e => e.EventId == id);
+            if (ev == null) return NotFound();
+            _db.Events.Remove(ev);
+            _db.SaveChanges();
+            return new JsonResult(new { ok = true });
+        }
+
+        public IActionResult OnPostUpdate(Guid id, decimal price)
+        {
+            var ev = _db.Events.FirstOrDefault(e => e.EventId == id);
+            if (ev == null) return NotFound();
+            ev.Price = price;
+            _db.SaveChanges();
+            return new JsonResult(new { ok = true, newPrice = price });
         }
     }
 }
