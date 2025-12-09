@@ -5,9 +5,6 @@ using BookingManagmint.Models;
 
 namespace BookingManagmint.Services
 {
-    /// <summary>
-    /// Encapsulates booking, cancellation, and check-in business logic.
-    /// </summary>
     public class BookingService
     {
         public IEnumerable<Event> ListEvents(string? query = null)
@@ -33,10 +30,9 @@ namespace BookingManagmint.Services
             {
                 if (!ev.CanBook(quantity)) return;
                 if (!ev.ReserveSeats(quantity)) return;
-                // For simplicity, one ticket per booking (quantity represented by SeatNumber list in real impl)
                 ticket = new Ticket(userId, eventId, Guid.NewGuid().ToString())
                 {
-                    Status = TicketStatus.Paid // assume paid for prototype
+                    Status = TicketStatus.Paid
                 };
                 InMemoryStore.Tickets.Add(ticket);
             });

@@ -4,12 +4,51 @@
     ViewData["Title"] = "Organizer - Events";
 }
 
-<div id="root-organizer"></div>
-
-@section Scripts {
-    <script>
-        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
-        window.__REACT_MOUNTS__.push({ id: 'root-organizer', component: 'OrganizerForm' });
-    </script>
-}
+<div class="card">
+    <div class="card-body">
+        <h3 class="card-title">Create Event</h3>
+        @if (!string.IsNullOrEmpty(Model.Message))
+        {
+            <div class="alert alert-@(Model.IsSuccess ? "success" : "danger")">@Model.Message</div>
+        }
+        <form method="post">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Title</label>
+                    <input asp-for="ModelInput.Title" class="form-control" required maxlength="120" />
+                    <span asp-validation-for="ModelInput.Title" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Venue</label>
+                    <input asp-for="ModelInput.Venue" class="form-control" required />
+                    <span asp-validation-for="ModelInput.Venue" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <textarea asp-for="ModelInput.Description" class="form-control"></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Date & Time</label>
+                    <input asp-for="ModelInput.DateTime" type="datetime-local" class="form-control" required />
+                    <span asp-validation-for="ModelInput.DateTime" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Capacity</label>
+                    <input asp-for="ModelInput.Capacity" type="number" class="form-control" min="0" />
+                    <span asp-validation-for="ModelInput.Capacity" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Price</label>
+                    <input asp-for="ModelInput.Price" type="number" class="form-control" min="0" step="0.01" />
+                    <span asp-validation-for="ModelInput.Price" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Category</label>
+                    <input asp-for="ModelInput.Category" class="form-control" />
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Create</button>
+        </form>
+    </div>
+</div>
 

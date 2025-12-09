@@ -1,58 +1,73 @@
-using System.ComponentModel.DataAnnotations;
 using BookingManagmint.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace BookingManagmint.Pages.Auth
 {
     [IgnoreAntiforgeryToken]
     public class LoginModel : PageModel
     {
-        private readonly AppDbContext _db;
-        public LoginModel(AppDbContext db) => _db = db;
+        private readonly DbConnectionFactory _factory;
+        public LoginModel(DbConnectionFactory factory) => _factory = factory;
 
-        public class InputModel
-        {
-            [Required]
-            public string UsernameOrEmail { get; set; } = string.Empty;
+        public string? ErrorMessage { get; set; }
 
-            [Required]
-            public string Password { get; set; } = string.Empty;
-        }
-
-        [BindProperty]
-        public InputModel Input { get; set; } = new();
+        public void OnGet() { }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid) return Page();
+            var usernameOrEmail = Request.Form["UsernameOrEmail"].ToString().Trim();
+            var password = Request.Form["Password"].ToString().Trim();
 
-            var login = await _db.Logins
-                .FirstOrDefaultAsync(l =>
-                    (l.Username == Input.UsernameOrEmail || l.Email == Input.UsernameOrEmail) &&
-                    l.PasswordHash == Input.Password);
-
-            if (login == null)
+            if (string.IsNullOrWhiteSpace(usernameOrEmail) || string.IsNullOrWhiteSpace(password))
             {
-                ModelState.AddModelError(string.Empty, "Invalid credentials");
+                ErrorMessage = "Please enter username/email and password.";
                 return Page();
             }
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == login.UserId);
-            if (user == null)
+            try
             {
-                ModelState.AddModelError(string.Empty, "User not found");
+                using var conn = _factory.CreateConnection();
+                await conn.OpenAsync();
+                
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT l.UserId, l.Username, l.PasswordHash, u.FullName, u.Email, u.Role
+                    FROM Logins l
+                    INNER JOIN Users u ON u.UserId = l.UserId
+                    WHERE (l.Username = @input OR l.Email = @input) AND l.PasswordHash = @password
+                ";
+                cmd.Parameters.AddWithValue("@input", usernameOrEmail);
+                cmd.Parameters.AddWithValue("@password", password);
+                
+                using var reader = await cmd.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var userId = reader.GetGuid(0);
+                    var fullName = reader.GetString(3);
+                    var email = reader.GetString(4);
+                    var role = reader.GetInt32(5);
+                    
+                    HttpContext.Session.SetString("UserId", userId.ToString());
+                    HttpContext.Session.SetString("UserName", fullName);
+                    HttpContext.Session.SetString("UserEmail", email);
+                    HttpContext.Session.SetString("UserRole", role.ToString());
+                    await HttpContext.Session.CommitAsync();
+                    
+                    return RedirectToPage("/Dashboard/Index");
+                }
+                else
+                {
+                    ErrorMessage = "Invalid username/email or password.";
+                    return Page();
+                }
+            }
+            catch
+            {
+                ErrorMessage = "An error occurred. Please try again.";
                 return Page();
             }
-
-            HttpContext.Session.SetString("UserId", user.UserId.ToString());
-            HttpContext.Session.SetString("UserName", user.FullName);
-            HttpContext.Session.SetString("UserEmail", user.Email);
-            HttpContext.Session.SetString("UserRole", ((int)user.Role).ToString());
-
-            return RedirectToPage("/Index");
         }
     }
 }
-

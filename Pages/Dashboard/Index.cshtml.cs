@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using BookingManagmint.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Http;
+using BookingManagmint.Models;
 
 namespace BookingManagmint.Pages.Dashboard
 {
-    [IgnoreAntiforgeryToken]
     public class IndexModel : PageModel
     {
         private readonly DbConnectionFactory _factory;
@@ -15,6 +15,117 @@ namespace BookingManagmint.Pages.Dashboard
         {
             _factory = factory;
             _db = db;
+        }
+
+        public List<TicketItem> Tickets { get; private set; } = new();
+        public string? Message { get; private set; }
+        public bool IsSuccess { get; private set; }
+
+        public class TicketItem
+        {
+            public Guid Id { get; set; }
+            public Guid EventId { get; set; }
+            public string Status { get; set; } = string.Empty;
+            public DateTime PurchasedAt { get; set; }
+        }
+
+        public void OnGet()
+        {
+            var userIdText = HttpContext.Session.GetString("UserId");
+            if (!Guid.TryParse(userIdText, out var userId))
+            {
+                Tickets = new List<TicketItem>();
+                return;
+            }
+
+            var rows = new List<TicketItem>();
+            using var conn = _factory.CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT TicketId, EventId, Status, PurchasedAt
+                                FROM vw_UserTickets
+                                WHERE UserId = @uid
+                                ORDER BY PurchasedAt DESC";
+            cmd.Parameters.Add(new SqlParameter("@uid", userId));
+            conn.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                rows.Add(new TicketItem
+                {
+                    Id = reader.GetGuid(0),
+                    EventId = reader.GetGuid(1),
+                    Status = StatusText(reader.GetInt32(2)),
+                    PurchasedAt = reader.GetDateTime(3)
+                });
+            }
+            Tickets = rows;
+        }
+
+        public IActionResult OnPostCancel(Guid ticketId)
+        {
+            var userIdText = HttpContext.Session.GetString("UserId");
+            if (!Guid.TryParse(userIdText, out var userId))
+            {
+                Message = "Please log in to cancel tickets.";
+                IsSuccess = false;
+                OnGet();
+                return Page();
+            }
+
+            try
+            {
+                using var conn = _factory.CreateConnection();
+                conn.Open();
+                using var tx = conn.BeginTransaction();
+
+                Guid eventId;
+                using (var select = conn.CreateCommand())
+                {
+                    select.Transaction = tx;
+                    select.CommandText = @"SELECT EventId FROM Tickets WHERE TicketId = @id AND UserId = @uid AND Status <> 2";
+                    select.Parameters.Add(new SqlParameter("@id", ticketId));
+                    select.Parameters.Add(new SqlParameter("@uid", userId));
+                    var result = select.ExecuteScalar();
+                    if (result == null)
+                    {
+                        tx.Rollback();
+                        Message = "Ticket not found.";
+                        IsSuccess = false;
+                        OnGet();
+                        return Page();
+                    }
+                    eventId = (Guid)result;
+                }
+
+                using (var updateTicket = conn.CreateCommand())
+                {
+                    updateTicket.Transaction = tx;
+                    updateTicket.CommandText = @"UPDATE Tickets SET Status = 2 WHERE TicketId = @id";
+                    updateTicket.Parameters.Add(new SqlParameter("@id", ticketId));
+                    updateTicket.ExecuteNonQuery();
+                }
+
+                using (var release = conn.CreateCommand())
+                {
+                    release.Transaction = tx;
+                    release.CommandText = @"UPDATE Events SET RemainingSeats = RemainingSeats + 1 WHERE EventId = @eventId";
+                    release.Parameters.Add(new SqlParameter("@eventId", eventId));
+                    release.ExecuteNonQuery();
+                }
+
+                tx.Commit();
+                Message = "Ticket cancelled successfully.";
+                IsSuccess = true;
+                OnGet();
+                return Page();
+            }
+            catch (Exception ex)
+            {
+                Message = $"Unexpected error: {ex.Message}";
+                IsSuccess = false;
+                OnGet();
+                return Page();
+            }
         }
 
         public IActionResult OnGetTickets()
@@ -47,63 +158,6 @@ namespace BookingManagmint.Pages.Dashboard
                 });
             }
             return new JsonResult(rows);
-        }
-
-        public IActionResult OnPostCancel(Guid ticketId)
-        {
-            var userIdText = HttpContext.Session.GetString("UserId");
-            if (!Guid.TryParse(userIdText, out var userId))
-            {
-                Response.StatusCode = 401;
-                return new JsonResult(new { ok = false, error = "Not logged in" });
-            }
-
-            try
-            {
-                using var conn = _factory.CreateConnection();
-                conn.Open();
-                using var tx = conn.BeginTransaction();
-
-                Guid eventId;
-                using (var select = conn.CreateCommand())
-                {
-                    select.Transaction = tx;
-                    select.CommandText = @"SELECT EventId FROM Tickets WHERE TicketId = @id AND UserId = @uid AND Status <> 2";
-                    select.Parameters.Add(new SqlParameter("@id", ticketId));
-                    select.Parameters.Add(new SqlParameter("@uid", userId));
-                    var result = select.ExecuteScalar();
-                    if (result == null)
-                    {
-                        tx.Rollback();
-                        return BadRequest(new { ok = false, error = "Ticket not found" });
-                    }
-                    eventId = (Guid)result;
-                }
-
-                using (var updateTicket = conn.CreateCommand())
-                {
-                    updateTicket.Transaction = tx;
-                    updateTicket.CommandText = @"UPDATE Tickets SET Status = 2 WHERE TicketId = @id";
-                    updateTicket.Parameters.Add(new SqlParameter("@id", ticketId));
-                    updateTicket.ExecuteNonQuery();
-                }
-
-                using (var release = conn.CreateCommand())
-                {
-                    release.Transaction = tx;
-                    release.CommandText = @"UPDATE Events SET RemainingSeats = RemainingSeats + 1 WHERE EventId = @eventId";
-                    release.Parameters.Add(new SqlParameter("@eventId", eventId));
-                    release.ExecuteNonQuery();
-                }
-
-                tx.Commit();
-                return new JsonResult(new { ok = true });
-            }
-            catch (Exception ex)
-            {
-                Response.StatusCode = 500;
-                return new JsonResult(new { ok = false, error = "Unexpected error", detail = ex.Message });
-            }
         }
 
         public IActionResult OnGetStats()

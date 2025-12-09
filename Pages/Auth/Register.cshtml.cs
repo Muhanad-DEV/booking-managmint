@@ -1,74 +1,105 @@
-using System.ComponentModel.DataAnnotations;
 using BookingManagmint.Data;
 using BookingManagmint.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace BookingManagmint.Pages.Auth
 {
     [IgnoreAntiforgeryToken]
     public class RegisterModel : PageModel
     {
-        private readonly AppDbContext _db;
-        public RegisterModel(AppDbContext db) => _db = db;
+        private readonly DbConnectionFactory _factory;
+        public RegisterModel(DbConnectionFactory factory) => _factory = factory;
 
-        public class InputModel
-        {
-            [Required, StringLength(200)]
-            public string FullName { get; set; } = string.Empty;
+        public string? ErrorMessage { get; set; }
 
-            [Required, EmailAddress]
-            public string Email { get; set; } = string.Empty;
-
-            [Required, StringLength(100)]
-            public string Username { get; set; } = string.Empty;
-
-            [Required, StringLength(100, MinimumLength = 4)]
-            public string Password { get; set; } = string.Empty;
-
-            [Phone]
-            public string? Phone { get; set; }
-        }
-
-        [BindProperty]
-        public InputModel Input { get; set; } = new();
+        public void OnGet() { }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid) return Page();
+            var fullName = Request.Form["FullName"].ToString().Trim();
+            var email = Request.Form["Email"].ToString().Trim();
+            var username = Request.Form["Username"].ToString().Trim();
+            var password = Request.Form["Password"].ToString().Trim();
+            var phone = Request.Form["Phone"].ToString().Trim();
 
-            var emailExists = await _db.Users.AnyAsync(u => u.Email == Input.Email);
-            var userNameExists = await _db.Logins.AnyAsync(l => l.Username == Input.Username);
-            if (emailExists || userNameExists)
+            if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(email) || 
+                string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
-                ModelState.AddModelError(string.Empty, "User already exists");
+                ErrorMessage = "Please fill in all required fields.";
                 return Page();
             }
 
-            var user = new User(Input.FullName, Input.Email, Input.Password, UserRole.Attendee);
-            var login = new LoginInfo
+            try
             {
-                LoginId = Guid.NewGuid(),
-                UserId = user.UserId,
-                Username = Input.Username,
-                PasswordHash = Input.Password,
-                Email = Input.Email,
-                Phone = Input.Phone,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _db.Users.Add(user);
-            _db.Logins.Add(login);
-            await _db.SaveChangesAsync();
-
-            HttpContext.Session.SetString("UserId", user.UserId.ToString());
-            HttpContext.Session.SetString("UserName", user.FullName);
-            HttpContext.Session.SetString("UserEmail", user.Email);
-            HttpContext.Session.SetString("UserRole", ((int)user.Role).ToString());
-
-            return RedirectToPage("/Index");
+                var userId = Guid.NewGuid();
+                var loginId = Guid.NewGuid();
+                
+                using var conn = _factory.CreateConnection();
+                await conn.OpenAsync();
+                using var tx = conn.BeginTransaction();
+                
+                try
+                {
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.Transaction = tx;
+                        cmd.CommandText = "INSERT INTO Users (UserId, FullName, Email, PasswordHash, Role) VALUES (@userId, @fullName, @email, @passwordHash, @role)";
+                        cmd.Parameters.AddWithValue("@userId", userId);
+                        cmd.Parameters.AddWithValue("@fullName", fullName);
+                        cmd.Parameters.AddWithValue("@email", email);
+                        cmd.Parameters.AddWithValue("@passwordHash", password);
+                        cmd.Parameters.AddWithValue("@role", (int)UserRole.Attendee);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                    
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.Transaction = tx;
+                        cmd.CommandText = "INSERT INTO Logins (LoginId, UserId, Username, PasswordHash, Email, Phone, CreatedAt) VALUES (@loginId, @userId, @username, @passwordHash, @email, @phone, SYSUTCDATETIME())";
+                        cmd.Parameters.AddWithValue("@loginId", loginId);
+                        cmd.Parameters.AddWithValue("@userId", userId);
+                        cmd.Parameters.AddWithValue("@username", username);
+                        cmd.Parameters.AddWithValue("@passwordHash", password);
+                        cmd.Parameters.AddWithValue("@email", email);
+                        cmd.Parameters.AddWithValue("@phone", string.IsNullOrWhiteSpace(phone) ? DBNull.Value : (object)phone);
+                        await cmd.ExecuteNonQueryAsync();
+                    }
+                    
+                    await tx.CommitAsync();
+                    
+                    HttpContext.Session.SetString("UserId", userId.ToString());
+                    HttpContext.Session.SetString("UserName", fullName);
+                    HttpContext.Session.SetString("UserEmail", email);
+                    HttpContext.Session.SetString("UserRole", ((int)UserRole.Attendee).ToString());
+                    await HttpContext.Session.CommitAsync();
+                    
+                    return RedirectToPage("/Dashboard/Index");
+                }
+                catch
+                {
+                    await tx.RollbackAsync();
+                    throw;
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                if (sqlEx.Number == 2627 || sqlEx.Number == 2601)
+                {
+                    ErrorMessage = "Email or username already exists. Please try a different one.";
+                }
+                else
+                {
+                    ErrorMessage = "Could not create account. Please try again.";
+                }
+                return Page();
+            }
+            catch
+            {
+                ErrorMessage = "An error occurred. Please try again.";
+                return Page();
+            }
         }
     }
 }
-

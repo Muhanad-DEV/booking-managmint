@@ -6,12 +6,39 @@
 
 <h1 class="mb-4">Events</h1>
 
-<div id="root-events"></div>
+<form method="get" class="mb-3">
+    <div class="input-group">
+        <span class="input-group-text">Search</span>
+        <input name="q" class="form-control" value="@Model.SearchQuery" placeholder="event title" />
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
 
-@section Scripts {
-    <script>
-        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
-        window.__REACT_MOUNTS__.push({ id: 'root-events', component: 'EventsList' });
-    </script>
+@if (Model.Events.Count == 0)
+{
+    <div class="alert alert-warning">No events found.</div>
+}
+else
+{
+    @foreach (var ev in Model.Events)
+    {
+        <div class="card mb-3">
+            <div class="card-body d-flex justify-content-between align-items-start gap-3">
+                <div>
+                    <div class="mb-1">
+                        <span class="badge text-bg-secondary me-2">@ev.Category</span>
+                        <h5 class="card-title d-inline">@ev.Title</h5>
+                    </div>
+                    <div class="text-muted small">@ev.DateTime.ToString("g") · @ev.Venue</div>
+                    <div class="mt-2">
+                        <span class="badge text-bg-info">Remaining: @ev.Remaining</span>
+                    </div>
+                </div>
+                <div>
+                    <a class="btn btn-primary" href="/Events/Details/@ev.Id">View details</a>
+                </div>
+            </div>
+        </div>
+    }
 }
 

@@ -8,11 +8,13 @@ using Microsoft.AspNetCore.Http;
 
 namespace BookingManagmint.Pages.Organizer
 {
-    [IgnoreAntiforgeryToken]
     public class EventsModel : PageModel
     {
         private readonly AppDbContext _db;
         public EventsModel(AppDbContext db) => _db = db;
+
+        public string? Message { get; private set; }
+        public bool IsSuccess { get; private set; }
 
         public class Input
         {
@@ -34,6 +36,38 @@ namespace BookingManagmint.Pages.Organizer
 
         [BindProperty]
         public Input ModelInput { get; set; } = new Input();
+
+        public void OnGet()
+        {
+        }
+
+        public IActionResult OnPost()
+        {
+            if (!ModelState.IsValid)
+            {
+                Message = "Please fill in all required fields correctly.";
+                IsSuccess = false;
+                return Page();
+            }
+
+            try
+            {
+                var ev = new Event(ModelInput.Title, ModelInput.Description ?? string.Empty, ModelInput.DateTime, ModelInput.Venue, ModelInput.Capacity, ModelInput.Price, ModelInput.Category);
+                _db.Events.Add(ev);
+                _db.SaveChanges();
+
+                Message = "Event created successfully!";
+                IsSuccess = true;
+                ModelInput = new Input();
+                return Page();
+            }
+            catch (Exception ex)
+            {
+                Message = $"Error creating event: {ex.Message}";
+                IsSuccess = false;
+                return Page();
+            }
+        }
 
         public async Task<IActionResult> OnGetListAsync()
         {

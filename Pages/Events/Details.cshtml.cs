@@ -7,11 +7,54 @@ using Microsoft.AspNetCore.Http;
 
 namespace BookingManagmint.Pages.Events
 {
-    [IgnoreAntiforgeryToken]
     public class DetailsModel : PageModel
     {
         private readonly DbConnectionFactory _factory;
         public DetailsModel(DbConnectionFactory factory) => _factory = factory;
+
+        public EventDetails? Event { get; private set; }
+        public string? Message { get; private set; }
+        public bool IsSuccess { get; private set; }
+
+        public class EventDetails
+        {
+            public Guid Id { get; set; }
+            public string Title { get; set; } = string.Empty;
+            public string Description { get; set; } = string.Empty;
+            public DateTime DateTime { get; set; }
+            public string Venue { get; set; } = string.Empty;
+            public int Remaining { get; set; }
+            public int Capacity { get; set; }
+            public decimal Price { get; set; }
+            public string Category { get; set; } = string.Empty;
+        }
+
+        public void OnGet(Guid id)
+        {
+            using var conn = _factory.CreateConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"SELECT EventId, Title, Description, DateTime, Venue, RemainingSeats, Capacity, Price, Category
+                                FROM Events
+                                WHERE EventId = @id";
+            cmd.Parameters.Add(new SqlParameter("@id", id));
+            conn.Open();
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+            {
+                Event = new EventDetails
+                {
+                    Id = reader.GetGuid(0),
+                    Title = reader.GetString(1),
+                    Description = reader.GetString(2),
+                    DateTime = reader.GetDateTime(3),
+                    Venue = reader.GetString(4),
+                    Remaining = reader.GetInt32(5),
+                    Capacity = reader.GetInt32(6),
+                    Price = reader.GetDecimal(7),
+                    Category = reader.GetString(8)
+                };
+            }
+        }
 
         public IActionResult OnGetDetails(Guid id)
         {
@@ -45,10 +88,18 @@ namespace BookingManagmint.Pages.Events
             var userIdText = HttpContext.Session.GetString("UserId");
             if (!Guid.TryParse(userIdText, out var userId))
             {
-                Response.StatusCode = 401;
-                return new JsonResult(new { error = "Not logged in" });
+                Message = "Please log in to book tickets.";
+                IsSuccess = false;
+                OnGet(id);
+                return Page();
             }
-            if (quantity <= 0) return BadRequest("Quantity must be at least 1");
+            if (quantity <= 0)
+            {
+                Message = "Quantity must be at least 1.";
+                IsSuccess = false;
+                OnGet(id);
+                return Page();
+            }
 
             try
             {
@@ -68,7 +119,10 @@ namespace BookingManagmint.Pages.Events
                 if (rows == 0)
                 {
                     tx.Rollback();
-                    return BadRequest("Not enough seats available");
+                    Message = "Not enough seats available.";
+                    IsSuccess = false;
+                    OnGet(id);
+                    return Page();
                 }
 
                 var ticketId = Guid.NewGuid();
@@ -79,17 +133,22 @@ namespace BookingManagmint.Pages.Events
                 insert.Parameters.Add(new SqlParameter("@id", ticketId));
                 insert.Parameters.Add(new SqlParameter("@userId", userId));
                 insert.Parameters.Add(new SqlParameter("@eventId", id));
-                insert.Parameters.Add(new SqlParameter("@status", 1)); // Paid
+                insert.Parameters.Add(new SqlParameter("@status", 1));
                 insert.Parameters.Add(new SqlParameter("@qr", $"QR-{ticketId.ToString()[..8]}"));
                 insert.ExecuteNonQuery();
 
                 tx.Commit();
-                return new JsonResult(new { ticketId, status = "Paid" });
+                Message = $"Booked! Ticket #{ticketId}";
+                IsSuccess = true;
+                OnGet(id);
+                return Page();
             }
             catch (Exception ex)
             {
-                Response.StatusCode = 500;
-                return new JsonResult(new { error = "Unexpected error while booking", detail = ex.Message });
+                Message = $"Unexpected error while booking: {ex.Message}";
+                IsSuccess = false;
+                OnGet(id);
+                return Page();
             }
         }
     }

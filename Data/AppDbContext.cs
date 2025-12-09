@@ -53,6 +53,10 @@ namespace BookingManagmint.Data
                 b.Property(x => x.Username).IsRequired();
                 b.HasIndex(x => x.Username).IsUnique();
                 b.HasIndex(x => x.Email).IsUnique();
+                b.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

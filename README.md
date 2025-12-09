@@ -19,10 +19,54 @@ Event Booking System for COMP4701 - Web Application Development
 
 ### Prerequisites
 
-- .NET 9.0 SDK
-- Node.js (v18+) and npm
+- .NET 9.0 SDK (for local development)
+- Node.js (v18+) and npm (for frontend)
+- Docker and Docker Compose (for containerized deployment)
 
-### Backend Setup
+### Docker Setup (Recommended)
+
+**Prerequisites:** Install Docker Desktop from https://www.docker.com/products/docker-desktop/
+
+**If `docker` command is not found:**
+- **Option 1 (Easiest):** Use the helper script:
+  ```bash
+  ./run-docker.sh up --build
+  ```
+  
+- **Option 2:** Add Docker to PATH for this session:
+  ```bash
+  export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
+  docker compose up --build
+  ```
+  
+- **Option 3:** Restart your terminal (Docker Desktop should add it to PATH automatically)
+
+1. Build and run with Docker Compose:
+   ```bash
+   docker compose up --build
+   ```
+   
+   (Use `docker-compose` if you have the standalone version)
+
+2. The application will be available at:
+   - http://localhost:8080
+
+3. The database is automatically initialized on first startup. SQL Server will be available at:
+   - Server: `localhost,1433`
+   - Username: `sa`
+   - Password: `YourStrong!Passw0rd123`
+
+4. To stop the containers:
+   ```bash
+   docker compose down
+   ```
+
+5. To remove volumes (clean database):
+   ```bash
+   docker compose down -v
+   ```
+
+### Local Development Setup
 
 1. Restore dependencies:
    ```bash

@@ -28,13 +28,83 @@
     </div>
 </div>
 
-<div id="root-home"></div>
-<noscript>Please enable JavaScript to use interactive features.</noscript>
+<div class="py-4">
+    <h2 class="mb-3">Browse Events</h2>
+    <form method="get" class="mb-3">
+        <div class="input-group input-group-lg" style="max-width: 640px">
+            <span class="input-group-text">Search</span>
+            <input name="q" class="form-control" placeholder="event title, venue, or category" value="@Model.SearchQuery" />
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </form>
+    <div class="d-flex gap-2 mb-4">
+        <a class="btn btn-outline-secondary btn-sm" href="?q=Tech">Tech</a>
+        <a class="btn btn-outline-secondary btn-sm" href="?q=Workshop">Workshops</a>
+        <a class="btn btn-outline-secondary btn-sm" href="?q=Auditorium">On Campus</a>
+    </div>
 
-@section Scripts {
-    <script>
-        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
-        window.__REACT_MOUNTS__.push({ id: 'root-home', component: 'EventsHome' });
-    </script>
-}
+    <div class="row g-3">
+        <div class="col-12 col-md-8">
+            <h5 class="mb-3">Featured</h5>
+            @if (Model.FeaturedEvents.Count == 0)
+            {
+                <div class="alert alert-secondary">No upcoming events yet.</div>
+            }
+            else
+            {
+                @foreach (var ev in Model.FeaturedEvents)
+                {
+                    <div class="card mb-3">
+                        <div class="card-body d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <div class="mb-1">
+                                    <span class="badge text-bg-secondary me-2">@ev.Category</span>
+                                    <h5 class="card-title d-inline">@ev.Title</h5>
+                                </div>
+                                <div class="text-muted small">@ev.DateTime.ToString("g") · @ev.Venue</div>
+                                <div class="mt-2">
+                                    <span class="badge text-bg-info">Remaining: @ev.Remaining</span>
+                                </div>
+                            </div>
+                            <div>
+                                <a class="btn btn-primary" href="/Events/Details/@ev.Id">View details</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            <h5 class="mt-4 mb-3">All events</h5>
+            @if (Model.AllEvents.Count == 0)
+            {
+                <div class="alert alert-warning">No events found.</div>
+            }
+            else
+            {
+                @foreach (var ev in Model.AllEvents)
+                {
+                    <div class="card mb-3">
+                        <div class="card-body d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <div class="mb-1">
+                                    <span class="badge text-bg-secondary me-2">@ev.Category</span>
+                                    <h5 class="card-title d-inline">@ev.Title</h5>
+                                </div>
+                                <div class="text-muted small">@ev.DateTime.ToString("g") · @ev.Venue</div>
+                                <div class="mt-2">
+                                    <span class="badge text-bg-info">Remaining: @ev.Remaining</span>
+                                </div>
+                            </div>
+                            <div>
+                                <a class="btn btn-primary" href="/Events/Details/@ev.Id">View details</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            <div class="mt-2">
+                <a class="btn btn-link p-0" href="/Events">Open full events page →</a>
+            </div>
+        </div>
+    </div>
+</div>
 

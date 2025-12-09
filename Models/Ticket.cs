@@ -2,14 +2,11 @@ using System;
 
 namespace BookingManagmint.Models
 {
-    /// <summary>
-    /// Represents a booked ticket by a user for an event.
-    /// </summary>
     public class Ticket
     {
         public Guid TicketId { get; set; }
-        public Guid UserId { get; set; } // FK to User
-        public Guid EventId { get; set; } // FK to Event
+        public Guid UserId { get; set; }
+        public Guid EventId { get; set; }
         public TicketStatus Status { get; set; }
         public string QRCode { get; set; } = string.Empty;
         public DateTime PurchasedAt { get; set; }
@@ -27,17 +24,8 @@ namespace BookingManagmint.Models
             SeatNumber = seatNumber;
         }
 
-        /// <summary>
-        /// Mark ticket as paid after purchase.
-        /// </summary>
         public void MarkPaid() => Status = TicketStatus.Paid;
-        /// <summary>
-        /// Mark ticket as cancelled (release seat).
-        /// </summary>
         public void Cancel() => Status = TicketStatus.Cancelled;
-        /// <summary>
-        /// Mark ticket as checked in at venue.
-        /// </summary>
         public void MarkCheckedIn() => Status = TicketStatus.CheckedIn;
     }
 }

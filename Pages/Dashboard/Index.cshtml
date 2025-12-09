@@ -4,12 +4,39 @@
     ViewData["Title"] = "My Dashboard";
 }
 
-<div id="root-dashboard"></div>
-
-@section Scripts {
-    <script>
-        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
-        window.__REACT_MOUNTS__.push({ id: 'root-dashboard', component: 'DashboardView' });
-    </script>
-}
+<div>
+    <h3 class="mb-3">My Tickets</h3>
+    @if (!string.IsNullOrEmpty(Model.Message))
+    {
+        <div class="alert alert-@(Model.IsSuccess ? "success" : "danger")">@Model.Message</div>
+    }
+    @if (Model.Tickets.Count == 0)
+    {
+        <div class="alert alert-secondary">No tickets yet.</div>
+    }
+    else
+    {
+        <ul class="list-group">
+            @foreach (var ticket in Model.Tickets)
+            {
+                var badgeColor = ticket.Status == "Paid" ? "success" : 
+                                ticket.Status == "Cancelled" ? "danger" : 
+                                ticket.Status == "CheckedIn" ? "primary" : "secondary";
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="badge text-bg-@badgeColor">@ticket.Status</span>
+                        <span class="ms-2 small text-muted">Purchased @ticket.PurchasedAt.ToString("g")</span>
+                    </div>
+                    @if (ticket.Status != "Cancelled")
+                    {
+                        <form method="post" style="display: inline;">
+                            <input type="hidden" name="ticketId" value="@ticket.Id" />
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Cancel</button>
+                        </form>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
 

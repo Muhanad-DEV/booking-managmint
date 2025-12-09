@@ -1,5 +1,6 @@
 -- Basic SQL Server schema for the Booking Management app
 -- Uses simple SQL (no advanced features) to create tables, constraints, view, and seed data.
+-- Note: Database should be created before running this script
 
 -- Drop existing objects (optional during development)
 -- DROP VIEW IF EXISTS dbo.vw_UserTickets;
@@ -83,25 +84,27 @@ END;
 -- View joining users, tickets, and events
 IF OBJECT_ID('dbo.vw_UserTickets', 'V') IS NOT NULL
     DROP VIEW dbo.vw_UserTickets;
-GO
-CREATE VIEW dbo.vw_UserTickets
-AS
-SELECT
-    u.UserId,
-    u.FullName,
-    u.Email,
-    t.TicketId,
-    t.Status,
-    t.PurchasedAt,
-    e.EventId,
-    e.Title,
-    e.DateTime AS EventDateTime,
-    e.Venue,
-    e.Category
-FROM dbo.Tickets t
-JOIN dbo.Users u ON u.UserId = t.UserId
-JOIN dbo.Events e ON e.EventId = t.EventId;
-GO
+
+IF OBJECT_ID('dbo.vw_UserTickets', 'V') IS NULL
+BEGIN
+    EXEC('CREATE VIEW dbo.vw_UserTickets
+    AS
+    SELECT
+        u.UserId,
+        u.FullName,
+        u.Email,
+        t.TicketId,
+        t.Status,
+        t.PurchasedAt,
+        e.EventId,
+        e.Title,
+        e.DateTime AS EventDateTime,
+        e.Venue,
+        e.Category
+    FROM dbo.Tickets t
+    JOIN dbo.Users u ON u.UserId = t.UserId
+    JOIN dbo.Events e ON e.EventId = t.EventId');
+END;
 
 -- Seed data (basic realistic data)
 -- Insert sample users

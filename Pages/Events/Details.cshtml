@@ -4,12 +4,35 @@
     ViewData["Title"] = "Event Details";
 }
 
-<div id="root-event-details"></div>
-
-@section Scripts {
-    <script>
-        window.__REACT_MOUNTS__ = window.__REACT_MOUNTS__ || [];
-        window.__REACT_MOUNTS__.push({ id: 'root-event-details', component: 'EventDetails' });
-    </script>
+@if (Model.Event == null)
+{
+    <div class="alert alert-info">Loading...</div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <h3 class="card-title">@Model.Event.Title</h3>
+            <div class="text-muted">
+                @Model.Event.DateTime.ToString("g") – @Model.Event.Venue · 
+                <span class="badge text-bg-secondary">@Model.Event.Category</span>
+            </div>
+            <p class="mt-3">@Model.Event.Description</p>
+            <div class="mb-2">
+                <span class="badge text-bg-info">Remaining: @Model.Event.Remaining/@Model.Event.Capacity</span>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Message))
+            {
+                <div class="alert alert-@(Model.IsSuccess ? "success" : "danger") mt-3">@Model.Message</div>
+            }
+            <form method="post" class="mt-3">
+                <div class="input-group" style="max-width: 240px">
+                    <span class="input-group-text">Qty</span>
+                    <input type="number" name="quantity" min="1" max="@Model.Event.Remaining" value="1" class="form-control" />
+                    <button type="submit" class="btn btn-primary" disabled="@(Model.Event.Remaining <= 0)">Book</button>
+                </div>
+            </form>
+        </div>
+    </div>
 }
 

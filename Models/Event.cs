@@ -3,9 +3,6 @@ using System.Collections.Generic;
 
 namespace BookingManagmint.Models
 {
-    /// <summary>
-    /// Represents an event that can be booked.
-    /// </summary>
     public class Event
     {
         public Guid EventId { get; set; }
@@ -35,15 +32,8 @@ namespace BookingManagmint.Models
             Category = cat;
         }
 
-        /// <summary>
-        /// Checks if requested seats are available for booking.
-        /// </summary>
         public bool CanBook(int quantity) => RemainingSeats >= quantity;
 
-        /// <summary>
-        /// Books (reserves) seats, reducing availability.
-        /// </summary>
-        /// <returns>True if successful, false if not enough seats.</returns>
         public bool ReserveSeats(int quantity)
         {
             if (CanBook(quantity))
@@ -53,9 +43,6 @@ namespace BookingManagmint.Models
             }
             return false;
         }
-        /// <summary>
-        /// Releases seats (on cancellation).
-        /// </summary>
         public void ReleaseSeats(int quantity)
         {
             RemainingSeats += quantity;
