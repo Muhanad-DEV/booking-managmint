@@ -1,15 +1,3 @@
--- Basic SQL Server schema for the Booking Management app
--- Uses simple SQL (no advanced features) to create tables, constraints, view, and seed data.
--- Note: Database should be created before running this script
-
--- Drop existing objects (optional during development)
--- DROP VIEW IF EXISTS dbo.vw_UserTickets;
--- DROP TABLE IF EXISTS dbo.Tickets;
--- DROP TABLE IF EXISTS dbo.Events;
--- DROP TABLE IF EXISTS dbo.Logins;
--- DROP TABLE IF EXISTS dbo.Users;
-
--- Users table (domain users)
 IF OBJECT_ID('dbo.Users', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Users (
@@ -17,14 +5,13 @@ BEGIN
         FullName NVARCHAR(200) NOT NULL,
         Email NVARCHAR(200) NOT NULL,
         PasswordHash NVARCHAR(200) NOT NULL,
-        Role INT NOT NULL, -- 0=Attendee,1=Organizer,2=Admin
+        Role INT NOT NULL,
         CONSTRAINT PK_Users PRIMARY KEY (UserId),
         CONSTRAINT UQ_Users_Email UNIQUE (Email),
         CONSTRAINT CK_Users_Role CHECK (Role BETWEEN 0 AND 2)
     );
 END;
 
--- Logins table (credentials/contact)
 IF OBJECT_ID('dbo.Logins', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Logins (
@@ -42,7 +29,6 @@ BEGIN
     );
 END;
 
--- Events table
 IF OBJECT_ID('dbo.Events', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Events (
@@ -62,14 +48,13 @@ BEGIN
     );
 END;
 
--- Tickets table
 IF OBJECT_ID('dbo.Tickets', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.Tickets (
         TicketId UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
         UserId UNIQUEIDENTIFIER NOT NULL,
         EventId UNIQUEIDENTIFIER NOT NULL,
-        Status INT NOT NULL CONSTRAINT DF_Tickets_Status DEFAULT 0, -- 0=Reserved,1=Paid,2=Cancelled,3=CheckedIn
+        Status INT NOT NULL CONSTRAINT DF_Tickets_Status DEFAULT 0,
         QRCode NVARCHAR(100) NOT NULL,
         PurchasedAt DATETIME2 NOT NULL CONSTRAINT DF_Tickets_PurchasedAt DEFAULT SYSUTCDATETIME(),
         SeatNumber NVARCHAR(20) NULL,
@@ -81,7 +66,6 @@ BEGIN
     );
 END;
 
--- View joining users, tickets, and events
 IF OBJECT_ID('dbo.vw_UserTickets', 'V') IS NOT NULL
     DROP VIEW dbo.vw_UserTickets;
 
@@ -106,8 +90,6 @@ BEGIN
     JOIN dbo.Events e ON e.EventId = t.EventId');
 END;
 
--- Seed data (basic realistic data)
--- Insert sample users
 IF NOT EXISTS (SELECT 1 FROM dbo.Users)
 BEGIN
     INSERT INTO dbo.Users (UserId, FullName, Email, PasswordHash, Role)
@@ -117,17 +99,15 @@ BEGIN
     ('00000000-0000-0000-0000-000000000003', 'Admin One', 'admin@example.com', 'hashed-admin', 2);
 END;
 
--- Insert logins
 IF NOT EXISTS (SELECT 1 FROM dbo.Logins)
 BEGIN
     INSERT INTO dbo.Logins (LoginId, UserId, Username, PasswordHash, Email, Phone)
     VALUES
-    (NEWID(), '00000000-0000-0000-0000-000000000001', 'organizer', 'hashed-org', 'org@example.com', '+15550001'),
-    (NEWID(), '00000000-0000-0000-0000-000000000002', 'attendee', 'hashed-att', 'attendee@example.com', '+15550002'),
-    (NEWID(), '00000000-0000-0000-0000-000000000003', 'admin', 'hashed-admin', 'admin@example.com', '+15550003');
+    (NEWID(), '00000000-0000-0000-0000-000000000001', 'organizer', 'hashed-org', 'org@example.com', '+96898888888'),
+    (NEWID(), '00000000-0000-0000-0000-000000000002', 'attendee', 'hashed-att', 'attendee@example.com', '+96898888888'),
+    (NEWID(), '00000000-0000-0000-0000-000000000003', 'admin', 'hashed-admin', 'admin@example.com', '+96898888888');
 END;
 
--- Insert events
 IF NOT EXISTS (SELECT 1 FROM dbo.Events)
 BEGIN
     INSERT INTO dbo.Events (EventId, Title, Description, DateTime, Venue, Capacity, RemainingSeats, Price, Category)
@@ -136,7 +116,6 @@ BEGIN
     ('00000000-0000-0000-0000-000000000011', 'React Workshop', 'React basics with hands-on labs', DATEADD(day, 14, SYSUTCDATETIME()), 'Lab 1', 30, 30, 0, 'Workshop');
 END;
 
--- Insert tickets
 IF NOT EXISTS (SELECT 1 FROM dbo.Tickets)
 BEGIN
     INSERT INTO dbo.Tickets (TicketId, UserId, EventId, Status, QRCode, PurchasedAt, SeatNumber)
