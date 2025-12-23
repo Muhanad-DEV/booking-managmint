@@ -1,0 +1,70 @@
+@model EventSearchViewModel
+@{
+    ViewData["Title"] = "Browse Events";
+}
+
+<h2>Browse Events</h2>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <form asp-action="Index" method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="searchQuery" class="form-control" placeholder="Search events..." value="@Model.SearchQuery" />
+            </div>
+            <div class="col-md-4">
+                <select name="category" class="form-select">
+                    <option value="">All Categories</option>
+                    @foreach (var cat in ViewBag.Categories as List<string> ?? new List<string>())
+                    {
+                        <option value="@cat" selected="@(Model.Category == cat)">@cat</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Events.Any())
+{
+    <div class="row">
+        @foreach (var eventItem in Model.Events)
+        {
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@eventItem.Title</h5>
+                        <p class="card-text">
+                            <small class="text-muted">@eventItem.Category</small>
+                        </p>
+                        <p class="card-text">@(eventItem.Description.Length > 100 ? eventItem.Description.Substring(0, 100) + "..." : eventItem.Description)</p>
+                        <p class="card-text">
+                            <strong>Date:</strong> @eventItem.DateTime.ToString("MMM dd, yyyy HH:mm")<br />
+                            <strong>Venue:</strong> @eventItem.Venue<br />
+                            <strong>Price:</strong> $@eventItem.Price.ToString("F2")<br />
+                            <strong>Available Seats:</strong> @eventItem.RemainingSeats / @eventItem.Capacity
+                        </p>
+                        @if (eventItem.RemainingSeats > 0)
+                        {
+                            <a asp-action="BookTicket" asp-route-id="@eventItem.EventId" class="btn btn-primary">Book Ticket</a>
+                        }
+                        else
+                        {
+                            <button class="btn btn-secondary" disabled>Sold Out</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <p>No events found. Try adjusting your search criteria.</p>
+    </div>
+}
+
+

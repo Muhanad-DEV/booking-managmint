@@ -112,8 +112,12 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Events)
 BEGIN
     INSERT INTO dbo.Events (EventId, Title, Description, DateTime, Venue, Capacity, RemainingSeats, Price, Category)
     VALUES
-    ('00000000-0000-0000-0000-000000000010', 'Tech Talk', 'Intro to ASP.NET Core', DATEADD(day, 7, SYSUTCDATETIME()), 'Auditorium A', 50, 50, 0, 'Tech'),
-    ('00000000-0000-0000-0000-000000000011', 'React Workshop', 'React basics with hands-on labs', DATEADD(day, 14, SYSUTCDATETIME()), 'Lab 1', 30, 30, 0, 'Workshop');
+    ('00000000-0000-0000-0000-000000000010', 'Tech Talk', 'Intro to ASP.NET Core', DATEADD(day, 7, SYSUTCDATETIME()), 'Auditorium A', 50, 50, 25.00, 'Technology'),
+    ('00000000-0000-0000-0000-000000000011', 'React Workshop', 'React basics with hands-on labs', DATEADD(day, 14, SYSUTCDATETIME()), 'Lab 1', 30, 30, 50.00, 'Workshop'),
+    ('00000000-0000-0000-0000-000000000012', 'Music Festival', 'Annual music festival featuring local artists', DATEADD(day, 21, SYSUTCDATETIME()), 'Concert Hall', 200, 200, 75.00, 'Music'),
+    ('00000000-0000-0000-0000-000000000013', 'Business Conference', 'Networking and business development conference', DATEADD(day, 30, SYSUTCDATETIME()), 'Convention Center', 150, 150, 100.00, 'Business'),
+    ('00000000-0000-0000-0000-000000000014', 'Sports Tournament', 'Local basketball championship tournament', DATEADD(day, 10, SYSUTCDATETIME()), 'Sports Arena', 500, 500, 15.00, 'Sports'),
+    ('00000000-0000-0000-0000-000000000015', 'Art Exhibition', 'Contemporary art exhibition featuring local artists', DATEADD(day, 5, SYSUTCDATETIME()), 'Art Gallery', 80, 80, 20.00, 'Arts');
 END;
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Tickets)

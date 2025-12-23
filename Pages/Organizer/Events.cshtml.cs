@@ -5,6 +5,7 @@ using BookingManagmint.Models;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
+using System.Linq;
 
 namespace BookingManagmint.Pages.Organizer
 {
@@ -23,6 +24,7 @@ namespace BookingManagmint.Pages.Organizer
             public string Title { get; set; } = string.Empty;
             public string? Description { get; set; }
             [Required]
+            [DataType(DataType.DateTime)]
             public DateTime DateTime { get; set; }
             [Required]
             [StringLength(200)]
@@ -41,11 +43,32 @@ namespace BookingManagmint.Pages.Organizer
         {
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
+            // Log model state for debugging
             if (!ModelState.IsValid)
             {
-                Message = "Please fill in all required fields correctly.";
+                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+                var errorKeys = ModelState.Keys.Where(k => ModelState[k].Errors.Count > 0).ToList();
+                var errorDetails = string.Join("; ", errorKeys.Select(k => $"{k}: {string.Join(", ", ModelState[k].Errors.Select(e => e.ErrorMessage))}"));
+                Message = $"Validation failed. Please check your input. Details: {errorDetails}";
+                IsSuccess = false;
+                return Page();
+            }
+            
+            // Validate required fields manually as fallback
+            if (string.IsNullOrWhiteSpace(ModelInput.Title) || 
+                string.IsNullOrWhiteSpace(ModelInput.Venue))
+            {
+                Message = "Please fill in all required fields: Title and Venue.";
+                IsSuccess = false;
+                return Page();
+            }
+            
+            // Check if DateTime is valid (not default)
+            if (ModelInput.DateTime == default || ModelInput.DateTime < DateTime.Now.AddHours(-1))
+            {
+                Message = "Please provide a valid date and time in the future.";
                 IsSuccess = false;
                 return Page();
             }
@@ -54,11 +77,17 @@ namespace BookingManagmint.Pages.Organizer
             {
                 var ev = new Event(ModelInput.Title, ModelInput.Description ?? string.Empty, ModelInput.DateTime, ModelInput.Venue, ModelInput.Capacity, ModelInput.Price, ModelInput.Category);
                 _db.Events.Add(ev);
-                _db.SaveChanges();
+                await _db.SaveChangesAsync();
 
                 Message = "Event created successfully!";
                 IsSuccess = true;
                 ModelInput = new Input();
+                return Page();
+            }
+            catch (DbUpdateException dbEx)
+            {
+                Message = $"Database error creating event: {dbEx.InnerException?.Message ?? dbEx.Message}";
+                IsSuccess = false;
                 return Page();
             }
             catch (Exception ex)

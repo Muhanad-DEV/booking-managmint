@@ -2,15 +2,15 @@ using BookingManagmint.Data;
 using BookingManagmint.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookingManagmint.Pages.Auth
 {
     [IgnoreAntiforgeryToken]
     public class RegisterModel : PageModel
     {
-        private readonly DbConnectionFactory _factory;
-        public RegisterModel(DbConnectionFactory factory) => _factory = factory;
+        private readonly AppDbContext _context;
+        public RegisterModel(AppDbContext context) => _context = context;
 
         public string? ErrorMessage { get; set; }
 
@@ -33,71 +33,70 @@ namespace BookingManagmint.Pages.Auth
 
             try
             {
-                var userId = Guid.NewGuid();
-                var loginId = Guid.NewGuid();
+                // Check if email already exists
+                var emailExists = await _context.Users
+                    .AnyAsync(u => u.Email == email);
                 
-                using var conn = _factory.CreateConnection();
-                await conn.OpenAsync();
-                using var tx = conn.BeginTransaction();
+                if (emailExists)
+                {
+                    ErrorMessage = "Email already exists. Please use a different email.";
+                    return Page();
+                }
+
+                // Check if username already exists
+                var usernameExists = await _context.Logins
+                    .AnyAsync(l => l.Username == username);
                 
-                try
+                if (usernameExists)
                 {
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.Transaction = tx;
-                        cmd.CommandText = "INSERT INTO Users (UserId, FullName, Email, PasswordHash, Role) VALUES (@userId, @fullName, @email, @passwordHash, @role)";
-                        cmd.Parameters.AddWithValue("@userId", userId);
-                        cmd.Parameters.AddWithValue("@fullName", fullName);
-                        cmd.Parameters.AddWithValue("@email", email);
-                        cmd.Parameters.AddWithValue("@passwordHash", password);
-                        cmd.Parameters.AddWithValue("@role", (int)UserRole.Attendee);
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-                    
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.Transaction = tx;
-                        cmd.CommandText = "INSERT INTO Logins (LoginId, UserId, Username, PasswordHash, Email, Phone, CreatedAt) VALUES (@loginId, @userId, @username, @passwordHash, @email, @phone, SYSUTCDATETIME())";
-                        cmd.Parameters.AddWithValue("@loginId", loginId);
-                        cmd.Parameters.AddWithValue("@userId", userId);
-                        cmd.Parameters.AddWithValue("@username", username);
-                        cmd.Parameters.AddWithValue("@passwordHash", password);
-                        cmd.Parameters.AddWithValue("@email", email);
-                        cmd.Parameters.AddWithValue("@phone", string.IsNullOrWhiteSpace(phone) ? DBNull.Value : (object)phone);
-                        await cmd.ExecuteNonQueryAsync();
-                    }
-                    
-                    await tx.CommitAsync();
-                    
-                    HttpContext.Session.SetString("UserId", userId.ToString());
-                    HttpContext.Session.SetString("UserName", fullName);
-                    HttpContext.Session.SetString("UserEmail", email);
-                    HttpContext.Session.SetString("UserRole", ((int)UserRole.Attendee).ToString());
-                    await HttpContext.Session.CommitAsync();
-                    
-                    return RedirectToPage("/Dashboard/Index");
+                    ErrorMessage = "Username already exists. Please choose a different username.";
+                    return Page();
                 }
-                catch
+
+                // Create new user
+                var user = new User(fullName, email, password, UserRole.Attendee);
+                _context.Users.Add(user);
+
+                // Create login info
+                var loginInfo = new LoginInfo
                 {
-                    await tx.RollbackAsync();
-                    throw;
-                }
+                    LoginId = Guid.NewGuid(),
+                    UserId = user.UserId,
+                    Username = username,
+                    PasswordHash = password,
+                    Email = email,
+                    Phone = string.IsNullOrWhiteSpace(phone) ? null : phone,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Logins.Add(loginInfo);
+
+                await _context.SaveChangesAsync();
+                
+                HttpContext.Session.SetString("UserId", user.UserId.ToString());
+                HttpContext.Session.SetString("UserName", user.FullName);
+                HttpContext.Session.SetString("UserEmail", user.Email);
+                HttpContext.Session.SetString("UserRole", ((int)UserRole.Attendee).ToString());
+                await HttpContext.Session.CommitAsync();
+                
+                return RedirectToPage("/Dashboard/Index");
             }
-            catch (SqlException sqlEx)
+            catch (DbUpdateException dbEx)
             {
-                if (sqlEx.Number == 2627 || sqlEx.Number == 2601)
+                // Check for unique constraint violations
+                if (dbEx.InnerException?.Message.Contains("UNIQUE") == true || 
+                    dbEx.InnerException?.Message.Contains("duplicate") == true)
                 {
                     ErrorMessage = "Email or username already exists. Please try a different one.";
                 }
                 else
                 {
-                    ErrorMessage = "Could not create account. Please try again.";
+                    ErrorMessage = $"Database error: {dbEx.InnerException?.Message ?? dbEx.Message}";
                 }
                 return Page();
             }
-            catch
+            catch (Exception ex)
             {
-                ErrorMessage = "An error occurred. Please try again.";
+                ErrorMessage = $"An error occurred: {ex.Message}";
                 return Page();
             }
         }

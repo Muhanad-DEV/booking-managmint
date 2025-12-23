@@ -1,0 +1,48 @@
+@model TicketViewModel
+@{
+    ViewData["Title"] = "Cancel Ticket";
+}
+
+<h2>Cancel Ticket</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="alert alert-warning">
+            <strong>Are you sure you want to cancel this ticket?</strong>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Ticket Details</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Ticket ID:</strong> @Model.TicketId</p>
+                <p><strong>QR Code:</strong> @Model.QRCode</p>
+                <p><strong>Status:</strong> @Model.Status</p>
+                <p><strong>Purchased:</strong> @Model.PurchasedAt.ToString("MMM dd, yyyy HH:mm")</p>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Event Details</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Event:</strong> @Model.EventTitle</p>
+                <p><strong>Date & Time:</strong> @Model.EventDateTime.ToString("MMM dd, yyyy HH:mm")</p>
+                <p><strong>Venue:</strong> @Model.EventVenue</p>
+                <p><strong>Price:</strong> $@Model.EventPrice.ToString("F2")</p>
+            </div>
+        </div>
+
+        <form asp-action="CancelTicket" method="post">
+            <input type="hidden" asp-for="TicketId" />
+            <div class="mb-3">
+                <button type="submit" class="btn btn-danger">Yes, Cancel Ticket</button>
+                <a asp-action="MyTickets" class="btn btn-secondary">No, Go Back</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+

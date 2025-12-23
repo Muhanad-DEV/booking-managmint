@@ -1,0 +1,56 @@
+@model UserProfileViewModel
+@{
+    ViewData["Title"] = "Update Profile";
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">User Profile</h3>
+            </div>
+            <div class="card-body">
+                <form asp-action="UpdateProfile" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    
+                    <input type="hidden" asp-for="UserId" />
+                    
+                    <div class="mb-3">
+                        <label asp-for="FullName" class="form-label"><strong>Full Name</strong></label>
+                        <input asp-for="FullName" class="form-control" />
+                        <span asp-validation-for="FullName" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label"><strong>Email</strong></label>
+                        <input asp-for="Email" type="email" class="form-control" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Role</strong></label>
+                        <input type="text" class="form-control" value="@Model.Role" disabled />
+                        <small class="text-muted">Role cannot be changed</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>User ID</strong></label>
+                        <input type="text" class="form-control" value="@Model.UserId" disabled />
+                        <small class="text-muted">Your unique user identifier</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">Update Profile</button>
+                        <a asp-action="Index" class="btn btn-secondary">Back to Events</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+
